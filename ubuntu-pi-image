@@ -581,7 +581,11 @@ function stage_08_compress() {
     # NOTE! Disabled while iterating
     echo "Compressing ${IMG_OUT}.xz"
     rm "${TMP_DIR}/${IMG_OUT}.xz" 2>/dev/null
-    xz --keep -T 0 "${TMP_DIR}/${IMG_OUT}"
+    
+    #don't keep full file
+    #xz --keep -T 0 "${TMP_DIR}/${IMG_OUT}"
+    xz -T 0 "${TMP_DIR}/${IMG_OUT}"
+    
     ls -lh "${TMP_DIR}/${IMG_OUT}.xz"
 
     local HASH="sha256"
@@ -617,7 +621,8 @@ IMG_QUALITY="" # Or something like "-beta1" for testing images
 IMG_VER="22.04"
 IMG_RELEASE="jammy"
 IMG_ARCH="arm64"
-IMG_OUT="${FLAVOUR}-${IMG_VER}${IMG_QUALITY}-desktop-${IMG_ARCH}+raspi.img"
+#IMG_ARCH="armhf"
+IMG_OUT="${FLAVOUR}-${IMG_VER}${IMG_QUALITY}-desktop-${IMG_ARCH}+raspi-$(date '+%Y-%m-%d').img"
 TMP_DIR="${SUDO_HOME}/Builds"
 
 # Create caches
