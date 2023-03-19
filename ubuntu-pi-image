@@ -186,7 +186,9 @@ EOM
 function stage_03_snap() {
     local ACCOUNT_KEY=""
     local BASE_SNAP=""
-    local SEED_SNAPS="ubuntu-mate-welcome software-boutique ubuntu-mate-pi snapd-desktop-integration gtk-common-themes gnome-3-38-2004 firefox"
+    #this didn't work & I don't want firefox
+    #local SEED_SNAPS="ubuntu-mate-welcome software-boutique ubuntu-mate-pi snapd-desktop-integration gtk-common-themes gnome-3-38-2004 firefox"
+    local SEED_SNAPS="ubuntu-mate-welcome software-boutique ubuntu-mate-pi gtk-common-themes gnome-3-38-2004"
     local SNAP_CHANNEL=""
     local SNAP_PRESEED_FAILED=0
     # https://git.launchpad.net/livecd-rootfs/tree/live-build/functions#n491
