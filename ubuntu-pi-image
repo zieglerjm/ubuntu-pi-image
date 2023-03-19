@@ -356,7 +356,7 @@ display_auto_detect=1
 ${ARM64}
 EOM
 
-    echo "zswap.enabled=1 zswap.zpool=z3fold zswap.compressor=lz4 dwc_otg.lpm_enable=0 console=tty1 root=LABEL=writable rootfstype=ext4 rootwait fixrtc quiet splash" > "${B}/cmdline.txt"
+    echo "zswap.enabled=1 zswap.zpool=z3fold zswap.compressor=lz4 dwc_otg.lpm_enable=0 console=tty1 root=LABEL=writable rootfstype=ext4 rootwait fixrtc quiet splash bootmenutimeout=10" > "${B}/cmdline.txt"
     cat <<'EOM' > "${R}/etc/fstab"
 LABEL=writable     /               ext4  discard,noatime,x-systemd.growfs  0  1
 LABEL=system-boot  /boot/firmware  vfat  defaults                          0  1
