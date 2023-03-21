@@ -478,8 +478,9 @@ EOM
     
     #openssh-server didn't work but iotop did? chromium-browser didn't get added the the desktop menu?
     #also LibraOffice got installed but is not in this script?
-    #nspawn apt-get -y install openssh-server iotop chromium-browser
+    #didn't work: nspawn apt-get -y install openssh-server chromium-browser
     nspawn apt-get -y install iotop
+    nspawn apt-get -y remove --purge libreoffice*
 }
 
 function stage_06_clean() {
