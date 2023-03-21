@@ -475,6 +475,11 @@ EOM
 
     # Install seeded snaps during oem-setup
     nspawn ln -s /lib/systemd/system/snapd.seeded.service /etc/systemd/system/oem-config.target.wants/snapd.seeded.service
+    
+    #openssh-server didn't work but iotop did? chromium-browser didn't get added the the desktop menu?
+    #also LibraOffice got installed but is not in this script?
+    #nspawn apt-get -y install openssh-server iotop chromium-browser
+    nspawn apt-get -y install iotop
 }
 
 function stage_06_clean() {
