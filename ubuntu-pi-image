@@ -384,6 +384,7 @@ EOM
     #cp -v "${R}/lib/linux-firmware-raspi/"* "${B}/"
     #cp -av "${R}/lib/firmware/${NEW_KERNEL}/device-tree/"* "${B}/"
     git clone https://github.com/raspberrypi/firmware.git
+pwd
 read -p "Press enter to continue"
     cp -v firmware/boot/* "${B}/"
 read -p "Press enter to continue"
