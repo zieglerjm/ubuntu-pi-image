@@ -383,7 +383,7 @@ EOM
 #Can we use updated files?
     #cp -v "${R}/lib/linux-firmware-raspi/"* "${B}/"
     #cp -av "${R}/lib/firmware/${NEW_KERNEL}/device-tree/"* "${B}/"
-    git clone https://github.com/raspberrypi/firmware.git
+    git clone -b master https://github.com/raspberrypi/firmware.git
 pwd
 read -p "Press enter to continue"
     cp -v firmware/boot/* "${B}/"
