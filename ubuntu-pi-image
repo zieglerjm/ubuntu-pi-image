@@ -164,6 +164,7 @@ EOM
 
     # Add the Raspberry Pi specific tweaks
     nspawn apt-get -y install ubuntu-raspi-settings
+    nspawn apt-get -y install openssh-server
 }
 
 function stage_02_desktop() {
