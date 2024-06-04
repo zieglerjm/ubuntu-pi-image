@@ -379,8 +379,14 @@ EOM
     echo "Kernel: ${NEW_KERNEL}"
 
     # Copy firmware, devicetree, overlays and kernel to the boot file system
-    cp -v "${R}/lib/linux-firmware-raspi/"* "${B}/"
-    cp -av "${R}/lib/firmware/${NEW_KERNEL}/device-tree/"* "${B}/"
+#Can we use updated files?
+    #cp -v "${R}/lib/linux-firmware-raspi/"* "${B}/"
+    #cp -av "${R}/lib/firmware/${NEW_KERNEL}/device-tree/"* "${B}/"
+    git clone https://github.com/raspberrypi/firmware.git
+read -p "Press enter to continue"
+    cp -v firmware/boot/* "${B}/"
+read -p "Press enter to continue"
+
 
     # Move the arm64 device-tree
     if [ -d "${B}/broadcom" ]; then
