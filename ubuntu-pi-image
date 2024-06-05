@@ -381,13 +381,11 @@ EOM
 
     # Copy firmware, devicetree, overlays and kernel to the boot file system
 #Can we use updated files?
-    #cp -v "${R}/lib/linux-firmware-raspi/"* "${B}/"
-    #cp -av "${R}/lib/firmware/${NEW_KERNEL}/device-tree/"* "${B}/"
-    git clone --depth 1 -b master https://github.com/raspberrypi/firmware.git
-pwd
-read -p "Press enter to continue"
-    cp -v firmware/boot/* "${B}/"
-read -p "Press enter to continue"
+    cp -v "${R}/lib/linux-firmware-raspi/"* "${B}/"
+    cp -av "${R}/lib/firmware/${NEW_KERNEL}/device-tree/"* "${B}/"
+#Didn't help
+    #git clone --depth 1 -b master https://github.com/raspberrypi/firmware.git
+    #cp -v firmware/boot/* "${B}/"
 
 
     # Move the arm64 device-tree
