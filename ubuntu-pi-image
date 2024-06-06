@@ -633,8 +633,8 @@ FLAVOUR="ubuntu-mate"
 IMG_QUALITY="" # Or something like "-beta1" for testing images
 IMG_VER="22.04"
 IMG_RELEASE="jammy"
-IMG_ARCH="arm64"
-#IMG_ARCH="armhf"
+#IMG_ARCH="arm64"
+IMG_ARCH="armhf"
 IMG_OUT="${FLAVOUR}-${IMG_VER}${IMG_QUALITY}-desktop-${IMG_ARCH}+raspi-$(date '+%Y-%m-%d').img"
 TMP_DIR="${SUDO_HOME}/Builds"
 
