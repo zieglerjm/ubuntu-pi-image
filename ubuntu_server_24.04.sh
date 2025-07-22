@@ -27,8 +27,8 @@ cp "$script_path" "$backup_dir/$backup_name"
 echo "Backup created: $backup_dir/$backup_name"
 
 # --- Configuration Variables ---
-UBUNTU_RELEASE="22.04.5" # 22.04.5 or 24.04.2
-CODE_NAME="jammy" # noble for 24.04.x, jammy for 22.04.x
+UBUNTU_RELEASE="24.04.2" #22.04.5 or 24.04.2
+CODE_NAME="noble" # noble for 24.04.x, jammy for 22.04.x
 ARCH="arm64"
 
 # Define a temporary directory for image operations
@@ -40,7 +40,7 @@ TEMP_DIR="/mnt/Data/OS/Linux/RPi/ubuntu"
 # Define the base server image URL (adjust if needed for specific releases)
 # This URL is for the official Ubuntu Server for Raspberry Pi.
 # Always check the latest releases on https://ubuntu.com/download/raspberry-pi
-IMAGE_TYPE="desktop" # server or desktop
+IMAGE_TYPE="server" # server or desktop
 BASE_IMAGE_URL="https://cdimage.ubuntu.com/releases/${UBUNTU_RELEASE}/release/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img.xz"
 #BASE_IMAGE_NAME="ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img.xz"
 #DECOMPRESSED_IMAGE_NAME="/tmp/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img"

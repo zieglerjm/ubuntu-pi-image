@@ -40,7 +40,7 @@ TEMP_DIR="/mnt/Data/OS/Linux/RPi/ubuntu"
 # Define the base server image URL (adjust if needed for specific releases)
 # This URL is for the official Ubuntu Server for Raspberry Pi.
 # Always check the latest releases on https://ubuntu.com/download/raspberry-pi
-IMAGE_TYPE="desktop" # server or desktop
+IMAGE_TYPE="server" # server or desktop
 BASE_IMAGE_URL="https://cdimage.ubuntu.com/releases/${UBUNTU_RELEASE}/release/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img.xz"
 #BASE_IMAGE_NAME="ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img.xz"
 #DECOMPRESSED_IMAGE_NAME="/tmp/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img"

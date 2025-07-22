@@ -27,8 +27,8 @@ cp "$script_path" "$backup_dir/$backup_name"
 echo "Backup created: $backup_dir/$backup_name"
 
 # --- Configuration Variables ---
-UBUNTU_RELEASE="22.04.5" # 22.04.5 or 24.04.2
-CODE_NAME="jammy" # noble for 24.04.x, jammy for 22.04.x
+UBUNTU_RELEASE="24.04.2" #22.04.5 or 24.04.2
+CODE_NAME="noble" # noble for 24.04.x, jammy for 22.04.x
 ARCH="arm64"
 
 # Define a temporary directory for image operations
