@@ -13,7 +13,7 @@ extension="${script_name##*.}"
 base="${script_name%.*}"
 
 # Handle scripts without a dot in the name
-if [[ "$base" == "$script_name" ]]; then
+if [ "$base" == "$script_name" ]; then
     backup_name="${script_name}_${timestamp}"
 else
     backup_name="${base}_${timestamp}.${extension}"
@@ -45,8 +45,10 @@ BASE_IMAGE_URL="https://cdimage.ubuntu.com/releases/${UBUNTU_RELEASE}/release/ub
 #BASE_IMAGE_NAME="ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img.xz"
 #DECOMPRESSED_IMAGE_NAME="/tmp/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img"
 BASE_IMAGE_NAME="${TEMP_DIR}/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img.xz"
+TEMP_IMAGE_NAME="/tmp/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img.xz"
 #DECOMPRESSED_IMAGE_NAME="${TEMP_DIR}/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img"
-DECOMPRESSED_IMAGE_NAME="/tmp/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img"
+#DECOMPRESSED_IMAGE_NAME="/tmp/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img"
+TEMP_IMAGE_NAME_DECOMPRESSED="/tmp/ubuntu-${UBUNTU_RELEASE}-preinstalled-${IMAGE_TYPE}-${ARCH}+raspi.img" 
 echo -ne "\033]0;BASE_IMAGE_NAME=${BASE_IMAGE_NAME}\007"
 
 # Output image name
@@ -109,6 +111,7 @@ wait_for_device_detach() {
 # Cleanup function to unmount and detach loop devices
 cleanup() {
     echo "--- Running cleanup function ---"
+    read -p "Press Enter to continue..." # Replaced 'pause' with 'read -p'
 
     # Unmount bind mounts first (most specific to least specific)
     # Ensure all bind mounts are safely unmounted
@@ -191,7 +194,7 @@ if [ "$(uname -m)" != "aarch64" ]; then
 fi
 
 # Check if running as root
-if [[ $EUID -ne 0 ]]; then
+if [ $EUID -ne 0 ]; then
     error_exit "This script must be run as root. Please use 'sudo'."
 fi
 
@@ -234,7 +237,7 @@ rm -f "$(join_paths "${TEMP_DIR}" "$COMPRESSED_OUTPUT_IMAGE_NAME")" # Also remov
 # Detach any lingering loop devices from previous runs, if they exist
 # This is a more aggressive initial cleanup for losetup devices
 echo "Detaching any lingering loop devices from previous runs..."
-for dev in $(sudo losetup -a | grep "$DECOMPRESSED_IMAGE_NAME" | awk -F':' '{print $1}'); do
+for dev in $(sudo losetup -a | grep "$TEMP_IMAGE_NAME_DECOMPRESSED" | awk -F':' '{print $1}'); do
     echo "Detaching $dev..."
     sudo losetup -d "$dev" || echo "Warning: Failed to detach $dev during initial cleanup."
     wait_for_device_detach "$dev" # Ensure they are truly gone
@@ -244,33 +247,51 @@ echo "--- Starting image creation process ---"
 
 # --- 1. Download Base Ubuntu Server Image (Conditional Download and Decompression) ---
 if [ -f "$BASE_IMAGE_NAME" ]; then
+#if [ -f "$BASE_IMAGE_NAME" ] && [! -f "$TEMP_IMAGE_NAME_DECOMPRESSED"]; then
     echo "--- Compressed base image '$BASE_IMAGE_NAME' exists. Decompressing (keeping original)... ---"
     #xz -df -k "$BASE_IMAGE_NAME" || error_exit "Failed to decompress $BASE_IMAGE_NAME."
-    echo Running: xz -dfc "$BASE_IMAGE_NAME" -> "$DECOMPRESSED_IMAGE_NAME"
-    xz -dfc "$BASE_IMAGE_NAME" > "$DECOMPRESSED_IMAGE_NAME" #|| error_exit "Failed to decompress
-else #download
+    #echo Running: xz -dfc "$BASE_IMAGE_NAME" -> "$TEMP_IMAGE_NAME_DECOMPRESSED"
+    #xz -dfc "$BASE_IMAGE_NAME" > "$TEMP_IMAGE_NAME_DECOMPRESSED" #|| error_exit "Failed to decompress
+    if [ ! -f "$TEMP_IMAGE_NAME" ]; then
+       echo "cp -f ${BASE_IMAGE_NAME} ${TEMP_IMAGE_NAME}"
+       cp -f $BASE_IMAGE_NAME $TEMP_IMAGE_NAME || error_exit "Failed: cp -f ${BASE_IMAGE_NAME} ${TEMP_IMAGE_NAME}"
+    else
+       echo "* File exists: ${TEMP_IMAGE_NAME}"
+    fi
+    if [ ! -f "${TEMP_IMAGE_NAME_DECOMPRESSED}" ]; then
+       echo "xz -dfc -T 2 ${TEMP_IMAGE_NAME} > ${TEMP_IMAGE_NAME_DECOMPRESSED}"
+       xz -dfc -T 2 $TEMP_IMAGE_NAME > $TEMP_IMAGE_NAME_DECOMPRESSED || error_exit "Failed to decompress"
+       #rm -f $TEMP_IMAGE_NAME
+    fi
+#else #download
+elif [! -f "$TEMP_IMAGE_NAME_DECOMPRESSED"]; then
     echo "--- Downloading base Ubuntu Server image for Raspberry Pi 5 (${UBUNTU_RELEASE} ${ARCH}) ---"
     echo "URL: $BASE_IMAGE_URL"
     wget -q -O "$BASE_IMAGE_NAME" "$BASE_IMAGE_URL" || error_exit "Failed to download base image from $BASE_IMAGE_URL."
     echo "--- Decompressing the image (keeping original)... ---"
     #xz -df -k "$BASE_IMAGE_NAME" || error_exit "Failed to decompress $BASE_IMAGE_NAME."
-    echo Running: xz -dfc "$BASE_IMAGE_NAME" -> "$DECOMPRESSED_IMAGE_NAME"
-    xz -dfc "$BASE_IMAGE_NAME" > "$DECOMPRESSED_IMAGE_NAME" #|| error_exit "Failed to decompress $BASE_IMAGE_NAME."
+    echo Running: xz -dfc "$BASE_IMAGE_NAME" -> "$TEMP_IMAGE_NAME_DECOMPRESSED"
+    #xz -dfc "$BASE_IMAGE_NAME" > "$TEMP_IMAGE_NAME_DECOMPRESSED" #|| error_exit "Failed to decompress $BASE_IMAGE_NAME."
+    echo "cp -f ${BASE_IMAGE_NAME} ${TEMP_IMAGE_NAME}"
+    cp -f $BASE_IMAGE_NAME $TEMP_IMAGE_NAME || error_exit "Failed: cp -f ${BASE_IMAGE_NAME} ${TEMP_IMAGE_NAME}"
+    echo "xz -dfc -T 2 ${TEMP_IMAGE_NAME} > ${TEMP_IMAGE_NAME_DECOMPRESSED}"
+    xz -dfc -T 2 $TEMP_IMAGE_NAME > $TEMP_IMAGE_NAME_DECOMPRESSED || error_exit "Failed to decompress"
+    #rm -f $TEMP_IMAGE_NAME
 fi
 
 # DEBUGGING: Check existence and size after decompression
-echo "DEBUG: Checking existence and size of $DECOMPRESSED_IMAGE_NAME after decompression..."
-ls -l "$DECOMPRESSED_IMAGE_NAME" || {
-    echo "DEBUG: $DECOMPRESSED_IMAGE_NAME does NOT exist after decompression. This is a critical failure."
+echo "DEBUG: Checking existence and size of $TEMP_IMAGE_NAME_DECOMPRESSED after decompression..."
+ls -l "$TEMP_IMAGE_NAME_DECOMPRESSED" || {
+    echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED does NOT exist after decompression. This is a critical failure."
     error_exit "Decompressed image file missing after xz operation."
 }
-echo "DEBUG: $DECOMPRESSED_IMAGE_NAME exists and its details are above."
+echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED exists and its details are above."
 
 
     # --- 2.5. Extend Image File (Re-enabled with a default target size for installations) ---
     echo "--- Extending image file if necessary and resizing root partition to max ---"
     # Get current size of the decompressed image in bytes
-    CURRENT_SIZE_BYTES=$(stat -c %s "$DECOMPRESSED_IMAGE_NAME")
+    CURRENT_SIZE_BYTES=$(stat -c %s "$TEMP_IMAGE_NAME_DECOMPRESSED")
     # Target size in bytes (e.g., 8GB or 10GB for sufficient space)
     # This initial extension is to ensure enough room *before* installing desktop
     TARGET_SIZE_GB=10 # Set a reasonable size for initial operations
@@ -281,24 +302,24 @@ echo "DEBUG: $DECOMPRESSED_IMAGE_NAME exists and its details are above."
 
     if (( CURRENT_SIZE_BYTES < TARGET_SIZE_BYTES )); then
         echo "Extending image file to ${TARGET_SIZE_GB}GB..."
-        truncate -s "${TARGET_SIZE_BYTES}" "$DECOMPRESSED_IMAGE_NAME" || error_exit "Failed to extend image file."
+        truncate -s "${TARGET_SIZE_BYTES}" "$TEMP_IMAGE_NAME_DECOMPRESSED" || error_exit "Failed to extend image file."
     else
         echo "Image file is already at least ${TARGET_SIZE_GB}GB. Skipping initial extension."
     fi
 
 # DEBUGGING: Check existence and size after truncation
-echo "DEBUG: Checking existence and size of $DECOMPRESSED_IMAGE_NAME after truncation..."
-ls -l "$DECOMPRESSED_IMAGE_NAME" || {
-    echo "DEBUG: $DECOMPRESSED_IMAGE_NAME does NOT exist after truncation. This is a critical failure."
+echo "DEBUG: Checking existence and size of $TEMP_IMAGE_NAME_DECOMPRESSED after truncation..."
+ls -l "$TEMP_IMAGE_NAME_DECOMPRESSED" || {
+    echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED does NOT exist after truncation. This is a critical failure."
     error_exit "Decompressed image file missing after truncate operation."
 }
-echo "DEBUG: $DECOMPRESSED_IMAGE_NAME exists and its details are above."
+echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED exists and its details are above."
 
 
 # --- 3. Create a Loop Device for the Image (Main Loop Device for Partitioning) ---
 echo "--- Attaching image to loop device for partitioning ---"
 # Attach the entire image file to a loop device for initial partitioning
-LOOP_DEVICE_FOR_PARTED=$(sudo losetup -f --show "$DECOMPRESSED_IMAGE_NAME")
+LOOP_DEVICE_FOR_PARTED=$(sudo losetup -f --show "$TEMP_IMAGE_NAME_DECOMPRESSED")
 if [ -z "$LOOP_DEVICE_FOR_PARTED" ]; then
     error_exit "Failed to create loop device for partitioning using losetup."
 fi
@@ -329,18 +350,18 @@ LOOP_DEVICE_FOR_PARTED="" # Clear variable after detaching
 sleep 2 # Give kernel time to update partition table
 
 # DEBUGGING: Check existence and size after first loop device detachment
-echo "DEBUG: Checking existence and size of $DECOMPRESSED_IMAGE_NAME after first loop device detachment..."
-ls -l "$DECOMPRESSED_IMAGE_NAME" || {
-    echo "DEBUG: $DECOMPRESSED_IMAGE_NAME does NOT exist after first loop device detachment. This is unexpected."
+echo "DEBUG: Checking existence and size of $TEMP_IMAGE_NAME_DECOMPRESSED after first loop device detachment..."
+ls -l "$TEMP_IMAGE_NAME_DECOMPRESSED" || {
+    echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED does NOT exist after first loop device detachment. This is unexpected."
     error_exit "Decompressed image file missing after first loop device detachment."
 }
-echo "DEBUG: $DECOMPRESSED_IMAGE_NAME exists and its details are above."
+echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED exists and its details are above."
 
 
 # --- 3.5. Re-attach Loop Device with Partition Scanning ---
 echo "--- Re-attaching loop device with partition scanning (-P) ---"
 # This will create /dev/loopXp1, /dev/loopXp2, etc.
-MAIN_LOOP_DEVICE=$(sudo losetup -P -f --show "$DECOMPRESSED_IMAGE_NAME")
+MAIN_LOOP_DEVICE=$(sudo losetup -P -f --show "$TEMP_IMAGE_NAME_DECOMPRESSED")
 if [ -z "$MAIN_LOOP_DEVICE" ]; then
     error_exit "Failed to re-create loop device with partition scanning."
 fi
@@ -428,11 +449,13 @@ chroot "$ROOT_MOUNT_POINT" /bin/bash <<EOF
         echo "deb http://ports.ubuntu.com/ubuntu-ports ${CODE_NAME}-updates main restricted universe multiverse" >> /etc/apt/sources.list
         echo "deb-src http://ports.ubuntu.com/ubuntu-ports ${CODE_NAME}-updates main restricted universe multiverse" >> /etc/apt/sources.list
     fi
+    
     # Add 'backports' components if not present
     if ! grep -q "${CODE_NAME}-backports" /etc/apt/sources.list; then
         echo "deb http://ports.ubuntu.com/ubuntu-ports ${CODE_NAME}-backports main restricted universe multiverse" >> /etc/apt/sources.list
         echo "deb-src http://ports.ubuntu.com/ubuntu-ports ${CODE_NAME}-backports main restricted universe multiverse" >> /etc/apt/sources.list
     fi
+    
     # Ensure security is there
     if ! grep -q "${CODE_NAME}-security" /etc/apt/sources.list; then
         echo "deb http://ports.ubuntu.com/ubuntu-ports ${CODE_NAME}-security main restricted universe multiverse" >> /etc/apt/sources.list
@@ -451,29 +474,30 @@ chroot "$ROOT_MOUNT_POINT" /bin/bash <<EOF
     # Perform a full upgrade. This is crucial for bringing all packages to a consistent state.
     echo "* Performing full upgrade to resolve major conflicts and update system..."
     # Using --allow-downgrades, --allow-unauthenticated, and --force-overwrite for robustness
-    DEBIAN_FRONTEND=noninteractive apt full-upgrade -y --allow-downgrades --allow-unauthenticated -o Dpkg::Options::="--force-overwrite" || {
-        echo "Full-upgrade failed. Attempting to install problematic core packages explicitly."
+    DEBIAN_FRONTEND=noninteractive apt full-upgrade -y --allow-downgrades --allow-unauthenticated -o Dpkg::Options::="--force-overwrite" || exit 1
+#JZ    DEBIAN_FRONTEND=noninteractive apt full-upgrade -y --allow-downgrades --allow-unauthenticated -o Dpkg::Options::="--force-overwrite" || {
+#JZ        echo "Full-upgrade failed. Attempting to install problematic core packages explicitly."
         # If full-upgrade still fails, try to explicitly install the reported problematic packages.
         # This list of packages covers common base system components that can cause issues.
-        DEBIAN_FRONTEND=noninteractive apt install -y \
-            libgcrypt20 libsystemd0 libsystemd-shared \
-            systemd systemd-sysv udev \
-            libcurl3t64-gnutls libjansson4 libnewt0.52 \
-            netplan.io netplan-generator python3-netplan || exit 1
-    }
+#JZ        DEBIAN_FRONTEND=noninteractive apt install -y \
+#JZ            libgcrypt20 libsystemd0 libsystemd-shared \
+#JZ            systemd systemd-sysv udev \
+#JZ            libcurl3t64-gnutls libjansson4 libnewt0.52 \
+#JZ            netplan.io netplan-generator python3-netplan || exit 1
+#JZ    }
 
     echo "* Installing network-manager (if not already present)..."
-    DEBIAN_FRONTEND=noninteractive apt install -y network-manager || exit 1
+#JZ    DEBIAN_FRONTEND=noninteractive apt install -y network-manager || exit 1
 
-    if [ "$IMAGE_TYPE" = "desktop" ]; then
+    #if [ "$IMAGE_TYPE" = "desktop" ]; then
         # Install Ubuntu MATE Desktop environment
-        echo "Installing ubuntu-mate-desktop..."
-        DEBIAN_FRONTEND=noninteractive apt install -y ubuntu-mate-desktop || exit 1
+    #    echo "Installing ubuntu-mate-desktop..."
+    #    DEBIAN_FRONTEND=noninteractive apt install -y ubuntu-mate-desktop || exit 1
         
         # Configure LightDM as the default display manager (MATE's default)
-        echo "Configuring LightDM as default display manager..."
-        DEBIAN_FRONTEND=noninteractive dpkg-reconfigure lightdm || exit 1
-    fi
+    #    echo "Configuring LightDM as default display manager..."
+    #    DEBIAN_FRONTEND=noninteractive dpkg-reconfigure lightdm || exit 1
+    #fi
 
     # Clean up apt cache to reduce image size
     echo "Clean up apt cache to reduce image size"
@@ -580,12 +604,11 @@ if [ "$UMOUNT_SUCCESS" = "false" ]; then
 fi
 
 # --- 6.5. Shrink Filesystem and Partition ---
-# JZ: Commenting out the actual shrinking process for now.
 # The image will remain at the size it was initially extended to (e.g., 10GB).
 # If you want to enable shrinking, uncomment the block below.
 
 # --- START Shrinking Block (currently commented out) ---
-: << 'SKIP_SHRINK_AND_RESIZE_ACTUAL_OPERATIONS'
+#: << 'SKIP_SHRINK_AND_RESIZE_ACTUAL_OPERATIONS'
 echo "--- Shrinking filesystem on root partition ---"
 # Check filesystem for errors first (important before shrinking)
 sudo e2fsck -fy "$ROOT_PARTITION" || error_exit "Filesystem check failed on $ROOT_PARTITION."
@@ -595,6 +618,7 @@ sudo e2fsck -fy "$ROOT_PARTITION" || error_exit "Filesystem check failed on $ROO
 echo "--- resize2fs -M $ROOT_PARTITION"
 sudo resize2fs -M "$ROOT_PARTITION" || error_exit "Failed to shrink root filesystem to minimum."
 
+: << 'SKIP_SHRINK_AND_RESIZE_ACTUAL_OPERATIONS'
 # Get the new size of the filesystem in blocks and block size
 # It's safer to get the size in 1K blocks from tune2fs -l.
 # We also add a buffer for safety (e.g., 200MB)
@@ -621,7 +645,7 @@ sleep 2 # Give kernel time
 
 echo "Re-attaching loop device for partition table manipulation..."
 # Need a loop device for the whole image to modify the partition table
-LOOP_DEVICE_FOR_PARTED=$(sudo losetup -f --show "$DECOMPRESSED_IMAGE_NAME")
+LOOP_DEVICE_FOR_PARTED=$(sudo losetup -f --show "$TEMP_IMAGE_NAME_DECOMPRESSED")
 if [ -z "$LOOP_DEVICE_FOR_PARTED" ]; then
     error_exit "Failed to create loop device for partition table modification."
 fi
@@ -658,7 +682,7 @@ sleep 2 # Give kernel time
 
 # --- Re-attach loop device with partition scanning to verify the new size ---
 echo "--- Re-attaching loop device with partition scanning to verify new size ---"
-MAIN_LOOP_DEVICE=$(sudo losetup -P -f --show "$DECOMPRESSED_IMAGE_NAME")
+MAIN_LOOP_DEVICE=$(sudo losetup -P -f --show "$TEMP_IMAGE_NAME_DECOMPRESSED")
 if [ -z "$MAIN_LOOP_DEVICE" ]; then
     error_exit "Failed to re-create loop device with partition scanning after shrink."
 fi
@@ -699,7 +723,7 @@ SECTOR_SIZE=512
 IMAGE_FILE_SIZE_BYTES=$(((LAST_SECTOR + 1) * SECTOR_SIZE + (20 * 1024 * 1024))) # Add 20MB safety buffer
 
 echo "--- Truncating image file to ${IMAGE_FILE_SIZE_BYTES} bytes."
-truncate -s "$IMAGE_FILE_SIZE_BYTES" "$DECOMPRESSED_IMAGE_NAME" || error_exit "Failed to truncate image file."
+truncate -s "$IMAGE_FILE_SIZE_BYTES" "$TEMP_IMAGE_NAME_DECOMPRESSED" || error_exit "Failed to truncate image file."
 
 echo "--- Image file shrunk successfully. ---"
 SKIP_SHRINK_AND_RESIZE_ACTUAL_OPERATIONS
@@ -716,42 +740,50 @@ if [ -n "$MAIN_LOOP_DEVICE" ] && sudo losetup -a | grep -q "$MAIN_LOOP_DEVICE"; 
     sync # Added: Ensure all pending writes are flushed to disk
     sleep 2 # Added: Give a moment for the filesystem to settle
     # NEW DEBUG LINE HERE
-    echo "DEBUG: Checking existence of $DECOMPRESSED_IMAGE_NAME immediately after main loop device detachment and sync/sleep..."
+    echo "DEBUG: Checking existence of $TEMP_IMAGE_NAME_DECOMPRESSED immediately after main loop device detachment and sync/sleep..."
     #read -p "Press Enter to continue..." # Replaced 'pause' with 'read -p'
-    ls -l "$DECOMPRESSED_IMAGE_NAME" || {
-        echo "DEBUG: $DECOMPRESSED_IMAGE_NAME does NOT exist immediately after detachment. This is the source of the problem."
+    ls -l "$TEMP_IMAGE_NAME_DECOMPRESSED" || {
+        echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED does NOT exist immediately after detachment. This is the source of the problem."
         error_exit "Decompressed image file missing immediately after main loop device detachment."
     }
-    echo "DEBUG: $DECOMPRESSED_IMAGE_NAME exists immediately after detachment."
+    echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED exists immediately after detachment."
 fi
 
 # --- 7. Finalize Image ---
 echo "--- Renaming the updated image file ---"
+
 # DEBUGGING: Check file existence before mv
-echo "DEBUG: Checking existence of $DECOMPRESSED_IMAGE_NAME before mv..."
-ls -l "$DECOMPRESSED_IMAGE_NAME" || {
-    echo "DEBUG: $DECOMPRESSED_IMAGE_NAME does NOT exist right before mv. This is unexpected."
+echo "DEBUG: Checking existence of $TEMP_IMAGE_NAME_DECOMPRESSED before mv..."
+ls -l "$TEMP_IMAGE_NAME_DECOMPRESSED" || {
+    echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED does NOT exist right before mv. This is unexpected."
     error_exit "Source image file missing before rename operation."
 }
-echo "DEBUG: $DECOMPRESSED_IMAGE_NAME exists."
-
-#mv "$DECOMPRESSED_IMAGE_NAME" "$OUTPUT_IMAGE_NAME" || error_exit "Failed to rename the updated image."
+echo "DEBUG: $TEMP_IMAGE_NAME_DECOMPRESSED exists."
 
 echo "--- Compressing the final image for distribution ---"
-#echo "Output will be: ${COMPRESSED_OUTPUT_IMAGE_NAME}"
-#will 2 threads vs unlimited help?
-#xz -z -k -T 0 "$OUTPUT_IMAGE_NAME" || error_exit "Failed to compress the final image."
-#xz -z -k -T 2 "$OUTPUT_IMAGE_NAME" || error_exit "Failed to compress the final image."
-#echo -ne "\033]0;xy output to $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME") \007"
-echo "Running: xz $DECOMPRESSED_IMAGE_NAME -> $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME")"
-#read -p "Press Enter to continue..." # Replaced 'pause' with 'read -p'
-#xz -zkc -T 2 $DECOMPRESSED_IMAGE_NAME > $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME")
-xz -zkc -T 2 $DECOMPRESSED_IMAGE_NAME > "${DECOMPRESSED_IMAGE_NAME}.xz"
-mv "${DECOMPRESSED_IMAGE_NAME}.xz" $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME")  || error_exit "Failed to mv ${DECOMPRESSED_IMAGE_NAME}.xz"
+#echo "Running: xz ${TEMP_IMAGE_NAME_DECOMPRESSED} -> ${TEMP_IMAGE_NAME_DECOMPRESSED}.xz"
+#xz -zkc -T 2 $TEMP_IMAGE_NAME_DECOMPRESSED > "${TEMP_IMAGE_NAME_DECOMPRESSED}.xz"
+#echo "mv $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME")"
+#mv "${TEMP_IMAGE_NAME_DECOMPRESSED}.xz" $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME")  || error_exit "Failed to mv ${TEMP_IMAGE_NAME_DECOMPRESSED}.xz"
+echo "Running: xz ${TEMP_IMAGE_NAME_DECOMPRESSED} -> /tmp/${COMPRESSED_OUTPUT_IMAGE_NAME}"
+xz -zkc -T 2 $TEMP_IMAGE_NAME_DECOMPRESSED > "/tmp/${COMPRESSED_OUTPUT_IMAGE_NAME}"
+echo "cp $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME")"
+cp -f "/tmp/${COMPRESSED_OUTPUT_IMAGE_NAME}" $(join_paths "$CURRENT_DIR" "$COMPRESSED_OUTPUT_IMAGE_NAME")  || error_exit "Failed to mv ${TEMP_IMAGE_NAME_DECOMPRESSED}.xz"
 
 echo "--- Image creation complete! ---"
 echo "Your image is ready at: ${COMPRESSED_OUTPUT_IMAGE_NAME}"
 echo "Script finished."
+
+#CLEANUP: start
+: << "CLEANUP"
+   if [ -f "${TEMP_IMAGE_NAME_DECOMPRESSED}" ]; then
+      rm "${TEMP_IMAGE_NAME_DECOMPRESSED}"
+   fi
+   if [ -f "/tmp/${COMPRESSED_OUTPUT_IMAGE_NAME}" ]; then
+      rm "/tmp/${COMPRESSED_OUTPUT_IMAGE_NAME}"
+   fi
+CLEANUP
+#CLEANUP: end
 
 exit 0
 
